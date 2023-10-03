@@ -1,4 +1,4 @@
-module github.com/wochap/dunst-dash
+module github.com/wochap/dunst-nctui
 
 go 1.20
 
