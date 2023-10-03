@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	// "strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -28,16 +27,24 @@ var (
 				Render
 )
 
+type responseMsg struct{}
+
 type item struct {
 	title       string
 	description string
+	appName     string
 	id          int
 }
 
-func (i item) Title() string       { return i.title }
+func (i item) Title() string {
+	if i.appName != "" {
+		return i.title + " (" + i.appName + ")"
+	}
+	return i.title
+}
 func (i item) Description() string { return i.description }
 func (i item) Id() int             { return i.id }
-func (i item) FilterValue() string { return i.title }
+func (i item) FilterValue() string { return i.title + i.description }
 
 type listKeyMap struct {
 	toggleTitleBar   key.Binding
@@ -68,7 +75,6 @@ func newListKeyMap() *listKeyMap {
 }
 
 type model struct {
-	responses    int
 	sub          chan struct{}
 	list         list.Model
 	keys         *listKeyMap
@@ -83,6 +89,7 @@ func getItems() []list.Item {
 			title:       it.Summary.Data,
 			description: it.Body.Data,
 			id:          it.ID.Data,
+			appName:     it.Appname.Data,
 		})
 	}
 	return items
@@ -96,22 +103,13 @@ func newModel() model {
 
 	// Make initial list of items
 	items := getItems()
-	// dunstctlHistory := getDunstctlHistory()
-	// var items []list.Item
-	// for _, it := range dunstctlHistory {
-	// 	items = append(items, item{
-	// 		title:       it.Summary.Data,
-	// 		description: it.Body.Data,
-	// 		id:          it.ID.Data,
-	// 	})
-	// }
 
 	// Setup list
 	delegate := newItemDelegate(delegateKeys)
-	groceryList := list.New(items, delegate, 0, 0)
-	groceryList.Title = "Notifications"
-	groceryList.Styles.Title = titleStyle
-	groceryList.AdditionalFullHelpKeys = func() []key.Binding {
+	notificationList := list.New(items, delegate, 0, 0)
+	notificationList.Title = "Notifications"
+	notificationList.Styles.Title = titleStyle
+	notificationList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.toggleTitleBar,
 			listKeys.toggleStatusBar,
@@ -122,30 +120,11 @@ func newModel() model {
 
 	return model{
 		sub:          make(chan struct{}),
-		list:         groceryList,
+		list:         notificationList,
 		keys:         listKeys,
 		delegateKeys: delegateKeys,
 	}
 }
-
-// func subscribeNotifications(m model) tea.Cmd {
-// 	return func() tea.Msg {
-// 		// Update list of items with dunst history changes
-// 		cmd := exec.Command("dbus-monitor", "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
-// 		stdout, _ := cmd.StdoutPipe()
-// 		scanner := bufio.NewScanner(stdout)
-// 		go func() {
-// 			for scanner.Scan() {
-// 				newItems := getItems()
-// 				m.list.SetItems(newItems)
-// 			}
-// 		}()
-// 		cmd.Start()
-// 		cmd.Wait()
-// 	}
-// }
-
-type responseMsg struct{}
 
 func listenForActivity(sub chan struct{}) tea.Cmd {
 	return func() tea.Msg {
@@ -163,7 +142,6 @@ func listenForActivity(sub chan struct{}) tea.Cmd {
 	}
 }
 
-// A command that waits for the activity on a channel.
 func waitForActivity(sub chan struct{}) tea.Cmd {
 	return func() tea.Msg {
 		return responseMsg(<-sub)
@@ -172,8 +150,8 @@ func waitForActivity(sub chan struct{}) tea.Cmd {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		listenForActivity(m.sub), // generate activity
-		waitForActivity(m.sub),   // wait for activity
+		listenForActivity(m.sub),
+		waitForActivity(m.sub),
 	)
 }
 
@@ -182,11 +160,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case responseMsg:
-		m.responses++
-		// fmt.Println("dbus-monitor outputted something: " + strconv.Itoa(m.responses))
 		newItems := getItems()
 		m.list.SetItems(newItems)
 		return m, waitForActivity(m.sub)
+
 	case tea.WindowSizeMsg:
 		h, v := appStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)

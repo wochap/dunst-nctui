@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"html"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/grokify/html-strip-tags-go"
 )
@@ -78,7 +80,11 @@ func getDunstctlHistory() []DunstNotification {
 	}
 	result := dunstctlHistory.Data[0]
 	for i := range result {
-		result[i].Body.Data = strip.StripTags(result[i].Body.Data)
+		result[i].Body.Data = strings.ReplaceAll(
+			html.UnescapeString(
+				strip.StripTags(result[i].Body.Data),
+			), "\n", " ",
+		)
 	}
 	return result
 }
