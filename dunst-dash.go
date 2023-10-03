@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
+	// "strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -28,31 +31,23 @@ var (
 type item struct {
 	title       string
 	description string
+	id          int
 }
 
 func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.description }
+func (i item) Id() int             { return i.id }
 func (i item) FilterValue() string { return i.title }
 
 type listKeyMap struct {
-	toggleSpinner    key.Binding
 	toggleTitleBar   key.Binding
 	toggleStatusBar  key.Binding
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
-	insertItem       key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		insertItem: key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "add item"),
-		),
-		toggleSpinner: key.NewBinding(
-			key.WithKeys("s"),
-			key.WithHelp("s", "toggle spinner"),
-		),
 		toggleTitleBar: key.NewBinding(
 			key.WithKeys("T"),
 			key.WithHelp("T", "toggle title"),
@@ -73,35 +68,51 @@ func newListKeyMap() *listKeyMap {
 }
 
 type model struct {
-	list          list.Model
-	itemGenerator *randomItemGenerator
-	keys          *listKeyMap
-	delegateKeys  *delegateKeyMap
+	responses    int
+	sub          chan struct{}
+	list         list.Model
+	keys         *listKeyMap
+	delegateKeys *delegateKeyMap
+}
+
+func getItems() []list.Item {
+	dunstctlHistory := getDunstctlHistory()
+	var items []list.Item
+	for _, it := range dunstctlHistory {
+		items = append(items, item{
+			title:       it.Summary.Data,
+			description: it.Body.Data,
+			id:          it.ID.Data,
+		})
+	}
+	return items
 }
 
 func newModel() model {
 	var (
-		itemGenerator randomItemGenerator
-		delegateKeys  = newDelegateKeyMap()
-		listKeys      = newListKeyMap()
+		delegateKeys = newDelegateKeyMap()
+		listKeys     = newListKeyMap()
 	)
 
 	// Make initial list of items
-	const numItems = 24
-	items := make([]list.Item, numItems)
-	for i := 0; i < numItems; i++ {
-		items[i] = itemGenerator.next()
-	}
+	items := getItems()
+	// dunstctlHistory := getDunstctlHistory()
+	// var items []list.Item
+	// for _, it := range dunstctlHistory {
+	// 	items = append(items, item{
+	// 		title:       it.Summary.Data,
+	// 		description: it.Body.Data,
+	// 		id:          it.ID.Data,
+	// 	})
+	// }
 
 	// Setup list
 	delegate := newItemDelegate(delegateKeys)
 	groceryList := list.New(items, delegate, 0, 0)
-	groceryList.Title = "Groceries"
+	groceryList.Title = "Notifications"
 	groceryList.Styles.Title = titleStyle
 	groceryList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			listKeys.toggleSpinner,
-			listKeys.insertItem,
 			listKeys.toggleTitleBar,
 			listKeys.toggleStatusBar,
 			listKeys.togglePagination,
@@ -110,21 +121,72 @@ func newModel() model {
 	}
 
 	return model{
-		list:          groceryList,
-		keys:          listKeys,
-		delegateKeys:  delegateKeys,
-		itemGenerator: &itemGenerator,
+		sub:          make(chan struct{}),
+		list:         groceryList,
+		keys:         listKeys,
+		delegateKeys: delegateKeys,
+	}
+}
+
+// func subscribeNotifications(m model) tea.Cmd {
+// 	return func() tea.Msg {
+// 		// Update list of items with dunst history changes
+// 		cmd := exec.Command("dbus-monitor", "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
+// 		stdout, _ := cmd.StdoutPipe()
+// 		scanner := bufio.NewScanner(stdout)
+// 		go func() {
+// 			for scanner.Scan() {
+// 				newItems := getItems()
+// 				m.list.SetItems(newItems)
+// 			}
+// 		}()
+// 		cmd.Start()
+// 		cmd.Wait()
+// 	}
+// }
+
+type responseMsg struct{}
+
+func listenForActivity(sub chan struct{}) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("dbus-monitor", "path='/org/freedesktop/Notifications',type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
+		stdout, _ := cmd.StdoutPipe()
+		scanner := bufio.NewScanner(stdout)
+		go func() {
+			for scanner.Scan() {
+				// TODO: throttle
+				sub <- struct{}{}
+			}
+		}()
+		cmd.Start()
+		return cmd.Wait()
+	}
+}
+
+// A command that waits for the activity on a channel.
+func waitForActivity(sub chan struct{}) tea.Cmd {
+	return func() tea.Msg {
+		return responseMsg(<-sub)
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.EnterAltScreen
+	return tea.Batch(
+		listenForActivity(m.sub), // generate activity
+		waitForActivity(m.sub),   // wait for activity
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case responseMsg:
+		m.responses++
+		// fmt.Println("dbus-monitor outputted something: " + strconv.Itoa(m.responses))
+		newItems := getItems()
+		m.list.SetItems(newItems)
+		return m, waitForActivity(m.sub)
 	case tea.WindowSizeMsg:
 		h, v := appStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
@@ -136,10 +198,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.toggleSpinner):
-			cmd := m.list.ToggleSpinner()
-			return m, cmd
-
 		case key.Matches(msg, m.keys.toggleTitleBar):
 			v := !m.list.ShowTitle()
 			m.list.SetShowTitle(v)
@@ -158,13 +216,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.toggleHelpMenu):
 			m.list.SetShowHelp(!m.list.ShowHelp())
 			return m, nil
-
-		case key.Matches(msg, m.keys.insertItem):
-			m.delegateKeys.remove.SetEnabled(true)
-			newItem := m.itemGenerator.next()
-			insCmd := m.list.InsertItem(0, newItem)
-			statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
-			return m, tea.Batch(insCmd, statusCmd)
 		}
 	}
 
@@ -183,7 +234,7 @@ func (m model) View() string {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	if _, err := tea.NewProgram(newModel()).Run(); err != nil {
+	if _, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
