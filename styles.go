@@ -17,7 +17,6 @@ const (
 func DefaultListStyles() (s list.Styles) {
 	verySubdued := viper.GetString("theme.verySubdued")
 	subdued := viper.GetString("theme.subdued")
-	titleBg := viper.GetString("theme.titleBg")
 	titleFg := viper.GetString("theme.titleFg")
 	spinnerFg := viper.GetString("theme.spinnerFg")
 	filterPromptFg := viper.GetString("theme.filterPromptFg")
@@ -32,9 +31,8 @@ func DefaultListStyles() (s list.Styles) {
 
 	s.Title = lipgloss.NewStyle().
 		Bold(true).
-		Background(lipgloss.Color(titleBg)).
 		Foreground(lipgloss.Color(titleFg)).
-		Padding(0, 1)
+		MarginTop(1)
 
 	s.Spinner = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(spinnerFg))
@@ -85,7 +83,6 @@ func DefaultListStyles() (s list.Styles) {
 func DefaultItemStyles() (s list.DefaultItemStyles) {
 	normalTitleFg := viper.GetString("theme.normalTitleFg")
 	normalDescFg := viper.GetString("theme.normalDescFg")
-	selectedTitleBorderFg := viper.GetString("theme.selectedTitleBorderFg")
 	selectedTitleFg := viper.GetString("theme.selectedTitleFg")
 	selectedDescFg := viper.GetString("theme.selectedDescFg")
 	dimmedTitleFg := viper.GetString("theme.dimmedTitleFg")
@@ -93,23 +90,21 @@ func DefaultItemStyles() (s list.DefaultItemStyles) {
 
 	s.NormalTitle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(normalTitleFg)).
-		Padding(0, 0, 0, 2)
+		Padding(0, 2, 0, 2)
 
 	s.NormalDesc = s.NormalTitle.Copy().
 		Foreground(lipgloss.Color(normalDescFg))
 
 	s.SelectedTitle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(lipgloss.Color(selectedTitleBorderFg)).
 		Foreground(lipgloss.Color(selectedTitleFg)).
-		Padding(0, 0, 0, 1)
+		Padding(0, 2, 0, 2)
 
 	s.SelectedDesc = s.SelectedTitle.Copy().
 		Foreground(lipgloss.Color(selectedDescFg))
 
 	s.DimmedTitle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(dimmedTitleFg)).
-		Padding(0, 0, 0, 2)
+		Padding(0, 2, 0, 2)
 
 	s.DimmedDesc = s.DimmedTitle.Copy().
 		Foreground(lipgloss.Color(dimmedDescFg))
