@@ -113,6 +113,7 @@ func newModel() model {
 	delegate.Styles = itemStyles
 	notificationList := list.New(items, delegate, 0, 0)
 	notificationList.Title = "DUNST NOTIFICATION CENTER"
+	// TODO: update itemNamePlural and itemNameSingular
 	notificationList.Styles = listStyles
 	notificationList.FilterInput.PromptStyle = listStyles.FilterPrompt
 	notificationList.FilterInput.Cursor.Style = listStyles.FilterCursor
