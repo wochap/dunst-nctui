@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -99,6 +100,9 @@ func newModel() model {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
+		listStyles   = DefaultListStyles()
+		itemStyles   = DefaultItemStyles()
+		helpStyles   = DefaultHelpStyles()
 	)
 
 	// Make initial list of items
@@ -106,9 +110,15 @@ func newModel() model {
 
 	// Setup list
 	delegate := newItemDelegate(delegateKeys)
+	delegate.Styles = itemStyles
 	notificationList := list.New(items, delegate, 0, 0)
-	notificationList.Title = "Notifications"
-	notificationList.Styles.Title = titleStyle
+	notificationList.Title = "DUNST NOTIFICATION CENTER"
+	notificationList.Styles = listStyles
+	notificationList.FilterInput.PromptStyle = listStyles.FilterPrompt
+	notificationList.FilterInput.Cursor.Style = listStyles.FilterCursor
+	notificationList.Paginator.ActiveDot = listStyles.ActivePaginationDot.String()
+	notificationList.Paginator.InactiveDot = listStyles.InactivePaginationDot.String()
+	notificationList.Help.Styles = helpStyles
 	notificationList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.toggleTitleBar,
@@ -210,6 +220,17 @@ func (m model) View() string {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath("$XDG_CONFIG_HOME/dunst-nctui")
+	viper.AddConfigPath(".")
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Printf("Error reading config file: %s\n", err)
+		os.Exit(1)
+	}
 
 	if _, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)

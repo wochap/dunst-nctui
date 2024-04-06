@@ -1,0 +1,29 @@
+[theme]
+verySubdued = "#000000"
+subdued = "#000000"
+titleBg = "#000000"
+titleFg = "#000000"
+spinnerFg = "#000000"
+filterPromptFg = "#000000"
+filterCursorFg = "#000000"
+statusBarFg = "#000000"
+statusBarActiveFilterFg = "#000000"
+noItemsFg = "#000000"
+activePaginationDotFg = "#000000"
+
+normalTitleFg = "#000000"
+normalDescFg = "#000000"
+selectedTitleBorderFg = "#000000"
+selectedTitleFg = "#000000"
+selectedDescFg = "#000000"
+dimmedTitleFg = "#000000"
+dimmedDescFg = "#000000"
+
+keyStyleFg = "#6c7086"
+descStyleFg = "#45475a"
+sepStyleFg = "#45475a"
+
+textDimmed1 = "#6c7086"
+textDimmed0 = "#45475a"
+
+
