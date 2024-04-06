@@ -25,13 +25,13 @@ func DefaultListStyles() (s list.Styles) {
 	statusBarFg := viper.GetString("theme.statusBarFg")
 	statusBarActiveFilterFg := viper.GetString("theme.statusBarActiveFilterFg")
 	noItemsFg := viper.GetString("theme.noItemsFg")
-	activePaginationDotFg := viper.GetString("theme.activePaginationDotFg")
 	verySubduedColor := lipgloss.Color(verySubdued)
 	subduedColor := lipgloss.Color(subdued)
 
 	s.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 2)
 
 	s.Title = lipgloss.NewStyle().
+		Bold(true).
 		Background(lipgloss.Color(titleBg)).
 		Foreground(lipgloss.Color(titleFg)).
 		Padding(0, 1)
@@ -68,7 +68,7 @@ func DefaultListStyles() (s list.Styles) {
 	s.HelpStyle = lipgloss.NewStyle().Padding(1, 0, 0, 2)
 
 	s.ActivePaginationDot = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(activePaginationDotFg)).
+		Foreground(subduedColor).
 		SetString(bullet)
 
 	s.InactivePaginationDot = lipgloss.NewStyle().
@@ -120,9 +120,9 @@ func DefaultItemStyles() (s list.DefaultItemStyles) {
 }
 
 func DefaultHelpStyles() (s help.Styles) {
-	keyStyleFg := viper.GetString("theme.textDimmed1")
-	descStyleFg := viper.GetString("theme.textDimmed0")
-	sepStyleFg := viper.GetString("theme.textDimmed0")
+	keyStyleFg := viper.GetString("theme.subdued")
+	descStyleFg := viper.GetString("theme.verySubdued")
+	sepStyleFg := viper.GetString("theme.verySubdued")
 
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(keyStyleFg))
 	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(descStyleFg))
