@@ -2,6 +2,8 @@
 
 Notification center for dunst in the terminal
 
+![](https://i.imgur.com/iAMi2EH.jpg)
+
 ## Usage
 
 ```
