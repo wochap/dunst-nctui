@@ -6,6 +6,8 @@ Notification center for dunst in the terminal
 
 ## Usage
 
+Copy `config.toml` to `~/.config/dunst-nctui/config.toml`
+
 ```
 dunst-nctui
 ```
